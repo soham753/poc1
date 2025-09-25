@@ -1,4 +1,4 @@
-// server/index.js
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -25,7 +25,7 @@ let latestData = {
   lon: null,
 };
 
-// Initialize properly - CORRECTED
+// Initialize properly
 Object.keys(latestData).forEach(key => {
   latestData[key] = null;
 });
@@ -47,6 +47,10 @@ let deviceCommands = {
   buzzer: false, // false = off, true = on
   led: false     // false = off, true = on
 };
+
+// Store pending commands that need to be delivered to IoT devices
+let pendingCommands = [];
+let commandListeners = []; // For real-time command delivery
 
 // Validation functions
 function isValidNumber(value) {
@@ -187,6 +191,30 @@ app.post("/api/data", (req, res) => {
     });
   }
 });
+app.get("/", (req, res) => {
+  const endpoints = [
+    { method: "POST", path: "/api/data", description: "IoT devices send data (partial or full)" },
+    { method: "POST", path: "/api/getData", description: "Frontend gets latest data (changed since last update)" },
+    { method: "GET", path: "/api/getData", description: "Frontend gets all current data (simpler)" },
+    { method: "POST", path: "/api/getSpecificData", description: "Frontend gets specific fields only" },
+    { method: "GET", path: "/api/thresholds", description: "Get current change thresholds" },
+    { method: "POST", path: "/api/thresholds", description: "Update change thresholds" },
+    { method: "GET", path: "/api/health", description: "Health check" },
+    { method: "POST", path: "/api/deviceCommand", description: "Frontend sets buzzer/LED commands" },
+    { method: "GET", path: "/api/getDeviceCommand", description: "IoT devices fetch current commands (long polling)" },
+    { method: "GET", path: "/api/pollDeviceCommand", description: "IoT devices poll for commands (simple)" },
+    { method: "POST", path: "/api/clearPendingCommands", description: "Clear pending commands (admin)" },
+  ];
+
+  res.json({
+    message: "Server is running",
+    environment: process.env.NODE_ENV || "development",
+    serverTime: new Date().toISOString(),
+    uptimeSeconds: process.uptime(),
+    endpoints
+  });
+});
+
 
 // Frontend requests latest data - only gets changed data since last request
 app.post("/api/getData", (req, res) => {
@@ -422,6 +450,7 @@ app.post("/api/deviceCommand", (req, res) => {
     }
 
     let updated = false;
+    const commandUpdate = {};
 
     if (buzzer !== undefined) {
       if (typeof buzzer !== "boolean") {
@@ -430,8 +459,11 @@ app.post("/api/deviceCommand", (req, res) => {
           timestamp: new Date().toISOString()
         });
       }
-      deviceCommands.buzzer = buzzer;
-      updated = true;
+      if (deviceCommands.buzzer !== buzzer) {
+        deviceCommands.buzzer = buzzer;
+        commandUpdate.buzzer = buzzer;
+        updated = true;
+      }
     }
 
     if (led !== undefined) {
@@ -441,17 +473,34 @@ app.post("/api/deviceCommand", (req, res) => {
           timestamp: new Date().toISOString()
         });
       }
-      deviceCommands.led = led;
-      updated = true;
+      if (deviceCommands.led !== led) {
+        deviceCommands.led = led;
+        commandUpdate.led = led;
+        updated = true;
+      }
     }
 
     if (updated) {
+      // Add to pending commands for immediate delivery
+      const newCommand = {
+        id: Date.now() + Math.random().toString(36).substr(2, 9),
+        commands: commandUpdate,
+        timestamp: new Date().toISOString()
+      };
+      
+      pendingCommands.push(newCommand);
+      
+      // Notify all waiting IoT devices immediately
+      notifyCommandListeners(newCommand);
+      
       console.log(`[${new Date().toISOString()}] Device commands updated:`, deviceCommands);
+      console.log(`[${new Date().toISOString()}] Pending commands:`, pendingCommands.length);
     }
 
     return res.json({
       message: "Device commands updated successfully",
       commands: deviceCommands,
+      updated: updated,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -464,15 +513,124 @@ app.post("/api/deviceCommand", (req, res) => {
   }
 });
 
-// Endpoint for IoT devices to fetch current commands
+// Notify all waiting IoT devices about new commands
+function notifyCommandListeners(command) {
+  commandListeners.forEach(listener => {
+    try {
+      listener.res.json({
+        commands: command.commands,
+        commandId: command.id,
+        timestamp: command.timestamp
+      });
+    } catch (error) {
+      console.error("Error notifying IoT device:", error);
+    }
+  });
+  
+  // Clear all listeners after notifying
+  commandListeners = [];
+}
+
+// Endpoint for IoT devices to fetch current commands (long polling)
 app.get("/api/getDeviceCommand", (req, res) => {
   try {
+    const timeout = req.query.timeout ? parseInt(req.query.timeout) : 30000; // Default 30 seconds
+    const immediate = req.query.immediate === 'true';
+
+    // If immediate response requested or commands are pending, return immediately
+    if (immediate || pendingCommands.length > 0) {
+      if (pendingCommands.length > 0) {
+        const latestCommand = pendingCommands.shift();
+        return res.json({
+          commands: latestCommand.commands,
+          commandId: latestCommand.id,
+          timestamp: latestCommand.timestamp,
+          immediate: true
+        });
+      } else {
+        return res.json({
+          commands: deviceCommands,
+          timestamp: new Date().toISOString(),
+          immediate: true
+        });
+      }
+    }
+
+    // Long polling: wait for new commands
+    const listener = {
+      res: res,
+      timestamp: Date.now()
+    };
+
+    commandListeners.push(listener);
+
+    // Set timeout for long polling
+    res.setTimeout(timeout, () => {
+      // Remove this listener from the array
+      commandListeners = commandListeners.filter(l => l !== listener);
+      
+      if (!res.headersSent) {
+        res.json({
+          commands: deviceCommands,
+          timestamp: new Date().toISOString(),
+          timeout: true
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in /api/getDeviceCommand:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+        ...(isDevelopment && { error: error.message })
+      });
+    }
+  }
+});
+
+// Alternative endpoint for IoT devices to poll for commands (simple GET)
+app.get("/api/pollDeviceCommand", (req, res) => {
+  try {
+    if (pendingCommands.length > 0) {
+      const latestCommand = pendingCommands.shift();
+      return res.json({
+        commands: latestCommand.commands,
+        commandId: latestCommand.id,
+        timestamp: latestCommand.timestamp,
+        newCommands: true
+      });
+    } else {
+      return res.json({
+        commands: deviceCommands,
+        timestamp: new Date().toISOString(),
+        newCommands: false
+      });
+    }
+  } catch (error) {
+    console.error("Error in /api/pollDeviceCommand:", error);
+    return res.status(500).json({ 
+      message: "Internal server error",
+      timestamp: new Date().toISOString(),
+      ...(isDevelopment && { error: error.message })
+    });
+  }
+});
+
+// Endpoint to clear pending commands (for testing/reset)
+app.post("/api/clearPendingCommands", (req, res) => {
+  try {
+    const count = pendingCommands.length;
+    pendingCommands = [];
+    commandListeners = [];
+    
     return res.json({
-      commands: deviceCommands,
+      message: `Cleared ${count} pending commands`,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error("Error in /api/getDeviceCommand:", error);
+    console.error("Error in /api/clearPendingCommands:", error);
     return res.status(500).json({ 
       message: "Internal server error",
       timestamp: new Date().toISOString(),
@@ -483,7 +641,7 @@ app.get("/api/getDeviceCommand", (req, res) => {
 
 // =================== Error Handling ===================
 
-// 404 handler for undefined routes - CORRECTED
+// 404 handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({
     message: "Endpoint not found",
@@ -509,6 +667,18 @@ app.use((error, req, res, next) => {
 // =================== Graceful shutdown ===================
 function gracefulShutdown() {
   console.log("Shutting down server gracefully...");
+  // Notify all waiting IoT devices before shutdown
+  commandListeners.forEach(listener => {
+    try {
+      listener.res.json({
+        message: "Server shutting down",
+        commands: deviceCommands,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error notifying IoT device during shutdown:", error);
+    }
+  });
   process.exit(0);
 }
 
@@ -516,7 +686,7 @@ process.on("SIGINT", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT,"0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log("Available endpoints:");
@@ -528,5 +698,7 @@ app.listen(PORT,"0.0.0.0", () => {
   console.log("POST /api/thresholds - Update change thresholds");
   console.log("GET  /api/health - Health check");
   console.log("POST /api/deviceCommand - Frontend sets buzzer/LED commands");
-  console.log("GET  /api/getDeviceCommand - IoT devices fetch current commands");
+  console.log("GET  /api/getDeviceCommand - IoT devices fetch current commands (long polling)");
+  console.log("GET  /api/pollDeviceCommand - IoT devices poll for commands (simple)");
+  console.log("POST /api/clearPendingCommands - Clear pending commands (admin)");
 });
