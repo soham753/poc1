@@ -80,12 +80,7 @@ const App = () => {
 
         setConnectionStatus('connected');
 
-        if (isIncremental && result.data) {
-          const changedSensors = Object.keys(result.data);
-          if (changedSensors.length > 0) {
-            addNotification(`${changedSensors.length} sensor(s) updated`, 'success');
-          }
-        }
+        
       }
 
       setLastRefresh(new Date());
