@@ -1,0 +1,479 @@
+/* App.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #ffffff;
+  color: #000000;
+}
+
+.app {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Notifications */
+.notifications-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 300px;
+}
+
+.notification {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 2px solid #000000;
+  background: #ffffff;
+  color: #000000;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  animation: slideIn 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.notification.info {
+  border-color: #3B82F6;
+  background: #EFF6FF;
+}
+
+.notification.success {
+  border-color: #10B981;
+  background: #ECFDF5;
+}
+
+.notification.error {
+  border-color: #EF4444;
+  background: #FEF2F2;
+}
+
+.notification-time {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.app-header {
+  background: #ffffff;
+  border-bottom: 2px solid #000000;
+  padding: 0.5rem 1.5rem;
+  flex-shrink: 0;
+  min-height: 80px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  gap: 1rem;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-main h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #000000;
+}
+
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #ffffff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 1rem;
+  color: #000000;
+  border: 1px solid #000000;
+}
+
+.last-update {
+  font-size: 0.8rem;
+  color: #000000;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+/* Header Controls */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.device-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.control-btn {
+  background: #ffffff;
+  border: 2px solid #000000;
+  color: #000000;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.control-btn:hover {
+  background: #f5f5f5;
+  transform: translateY(-1px);
+}
+
+.control-btn.active {
+  background: #000000;
+  color: #ffffff;
+}
+
+.control-btn.active:hover {
+  background: #333333;
+}
+
+.refresh-btn {
+  background: #000000;
+  border: 2px solid #000000;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 120px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #333333;
+  border-color: #333333;
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.refresh-btn.loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Dashboard */
+.dashboard {
+  flex: 1;
+  padding: 1rem;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  height: 100%;
+  width: 100%;
+  max-width: 98vw;
+  max-height: 98vh;
+}
+
+/* Sensor Cards */
+.sensor-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 2px solid #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+.sensor-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.sensor-card.full-width {
+  grid-column: 1 / -1;
+  min-height: 400px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.card-header h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #000000;
+}
+
+.unit {
+  font-size: 0.9rem;
+  color: #000000;
+  font-weight: 500;
+  background: #ffffff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid #000000;
+}
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.sensor-value {
+  font-size: 4rem;
+  font-weight: 800;
+  text-align: center;
+  color: #000000;
+  line-height: 1;
+}
+
+.movement-value {
+  font-size: 3rem !important;
+  text-transform: capitalize;
+}
+
+.sensor-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #666666;
+  margin-top: auto;
+}
+
+.threshold {
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-weight: 500;
+}
+
+.timestamp {
+  font-family: 'Monaco', 'Consolas', monospace;
+  opacity: 0.8;
+}
+
+/* Map Container */
+.map-container {
+  position: relative;
+  border-radius: 0.5rem;
+  flex: 1;
+  border: 2px solid #000000;
+  overflow: hidden;
+}
+
+.map-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.coordinates {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  padding: 0.75rem;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.9rem;
+  text-align: center;
+  color: #000000;
+  border-top: 2px solid #000000;
+}
+
+.no-data {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666666;
+  font-size: 1.1rem;
+}
+
+/* Footer */
+.app-footer {
+  background: #ffffff;
+  border-top: 2px solid #000000;
+  padding: 0.5rem 1.5rem;
+  flex-shrink: 0;
+  min-height: 50px;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  font-size: 0.85rem;
+  color: #000000;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .sensor-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    min-height: auto;
+    padding: 1rem;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .header-main {
+    justify-content: space-between;
+  }
+  
+  .header-controls {
+    justify-content: space-between;
+  }
+  
+  .sensor-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, auto);
+    gap: 0.75rem;
+  }
+  
+  .sensor-card {
+    min-height: 150px;
+  }
+  
+  .sensor-card.full-width {
+    min-height: 300px;
+  }
+  
+  .sensor-value {
+    font-size: 3rem;
+  }
+  
+  .footer-content {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .notifications-container {
+    position: static;
+    max-width: none;
+    margin: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-main {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .status-group {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .header-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .device-controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .sensor-card.full-width {
+    min-height: 250px;
+  }
+  
+  .map-container {
+    min-height: 200px;
+  }
+  
+  .sensor-value {
+    font-size: 2.5rem;
+  }
+}
