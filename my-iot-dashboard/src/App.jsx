@@ -22,7 +22,7 @@ const App = () => {
   const pollingTimeoutRef = useRef(null);
   const POLLING_INTERVAL = 10000; // ✅ 30 seconds
 
-  const API_BASE_URL = 'https://poc1-backend.vercel.app/api';
+  const API_BASE_URL = 'https://cow-collar-backend.vercel.app/api';
 
   // 📢 Notification helper
   const addNotification = useCallback((message, type = 'info') => {
